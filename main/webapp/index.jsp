@@ -43,26 +43,24 @@
             deleteButtons.forEach((btn) => {
                 btn.addEventListener("click", async function() {
                     const id = btn.getAttribute("data-id");
-                    const formData = new FormData();
-                    formData.append('id', id);
-                    const response = await fetch("/deleteTechlog", {
-
+                    const response = await fetch('deleteTechlog', {
                         method: "POST",
-                        body: formData
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                        },
+                        body: `id=${id}`,
                     });
 
-
-                    const result = await response.text();
-                    if (result === "success") {
+                    if (response.ok) {
                         btn.closest("tr").remove();
                     } else {
                         alert("An error occurred. Please try again.");
                     }
                 });
+
             });
         });
     </script>
-
 
 </head>
 <body>
@@ -82,7 +80,7 @@
         <th>Edit</th>
         <th>Delete</th>
     </tr>
-        <% EntityManagerFactory emf = Persistence.createEntityManagerFactory("default");
+    <% EntityManagerFactory emf = Persistence.createEntityManagerFactory("default");
         EntityManager em = emf.createEntityManager();
         TypedQuery<TechlogEntity> query = em.createQuery("SELECT t FROM TechlogEntity t", TechlogEntity.class);
         List<TechlogEntity> techlogs = query.getResultList();
@@ -106,11 +104,11 @@
 
         </td>
     </tr>
-        <% }
+    <% }
         em.close();
         emf.close(); %>
     <tr>
-        <form action="submitTechlog" method="post">
+        <form action="submitTechlog" method="post" enctype="multipart/form-data">
             <td></td>
             <td><input type="number" id="techNum" name="techNum" required></td>
             <td><input type="number" id="lane" name="lane" required></td>
@@ -128,26 +126,19 @@
 </table>
 <script>
     document.querySelectorAll('.edit-btn').forEach((btn, index) => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', function editClick() {
             const row = btn.closest('tr');
-            row.querySelectorAll('.editable').forEach(cell => {
+            const editableFields = ['techNum', 'lane', 'reportTime', 'startTime', 'stopTime', 'reportedProb', 'actualProb', 'actionTaken', 'skidata'];
+            row.querySelectorAll('.editable').forEach((cell, i) => {
                 const input = document.createElement('input');
+                input.setAttribute('name', editableFields[i]);
                 input.value = cell.innerText;
                 cell.innerText = '';
                 cell.appendChild(input);
             });
             btn.innerText = 'Save';
-            btn.removeEventListener('click', arguments.callee);
-            btn.addEventListener('click', () => {
-                row.querySelectorAll('.editable').forEach(cell => {
-                    const input = cell.querySelector('input');
-                    cell.innerText = input.value;
-                });
-                btn.innerText = 'Edit';
-                btn.removeEventListener('click', arguments.callee);
-                btn.addEventListener('click', arguments.callee.caller);
-            });
-            btn.addEventListener('click', () => {
+            btn.removeEventListener('click', editClick);
+            btn.addEventListener('click', function saveClick() {
                 const id = row.querySelector('.delete-btn').getAttribute('data-id');
                 const data = new FormData();
                 data.append('id', id);
@@ -168,8 +159,8 @@
                             cell.innerText = input.value;
                         });
                         btn.innerText = 'Edit';
-                        btn.removeEventListener('click', arguments.callee);
-                        btn.addEventListener('click', arguments.callee.caller);
+                        btn.removeEventListener('click', saveClick);
+                        btn.addEventListener('click', editClick);
                     } else {
                         alert('An error occurred. Please try again.');
                     }
@@ -178,12 +169,8 @@
                     alert('An error occurred. Please try again.');
                 });
             });
-
         });
     });
 </script>
 </body>
 </html>
-
-
-
