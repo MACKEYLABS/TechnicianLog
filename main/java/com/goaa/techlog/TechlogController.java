@@ -7,13 +7,10 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.Part;
-import org.apache.commons.io.IOUtils;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.sql.Time;
 
-@WebServlet(name = "TechlogController", urlPatterns = {"/", "/editTechlog", "/submitTechlog", "/updateTechlog"})
+@WebServlet(name = "TechlogController", urlPatterns = {"/", "/editTechlog", "/submitTechlog", "/updateTechlog", "/deleteTechlog"})
 public class TechlogController extends HttpServlet {
 
     private EntityManagerFactory entityManagerFactory;
@@ -80,10 +77,7 @@ public class TechlogController extends HttpServlet {
 
 
         if ("/deleteTechlog".equals(path)) {
-            //int id = Integer.parseInt(request.getParameter("id"));
-          Part idPart = request.getPart("id");
-            String idString = IOUtils.toString(idPart.getInputStream(), StandardCharsets.UTF_8);
-            int id = Integer.parseInt(idString);
+            int id = Integer.parseInt(request.getParameter("id"));
 
             EntityManager entityManager = entityManagerFactory.createEntityManager();
             EntityTransaction transaction = entityManager.getTransaction();
@@ -97,7 +91,6 @@ public class TechlogController extends HttpServlet {
                 }
 
                 transaction.commit();
-                response.setStatus(HttpServletResponse.SC_OK);
                 response.sendRedirect("index.jsp");
 
             } catch (Exception e) {
@@ -107,10 +100,8 @@ public class TechlogController extends HttpServlet {
             } finally {
                 entityManager.close();
             }
-
             return;
         }
-
 
         int techNum = Integer.parseInt(request.getParameter("techNum"));
         String lane = request.getParameter("lane");
