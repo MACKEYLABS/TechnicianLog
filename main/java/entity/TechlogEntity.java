@@ -1,7 +1,6 @@
 package entity;
 
 import jakarta.persistence.*;
-
 import java.sql.Time;
 
 @Entity
@@ -36,7 +35,7 @@ public class TechlogEntity {
     @Column(name = "techNum")
     private Integer techNum;
     @Basic
-    @Column(name = "skidata")
+    @Column(name = "skidata", columnDefinition = "TINYINT(1)")
     private boolean skidata;
 
     public int getId() {
