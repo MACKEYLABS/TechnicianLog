@@ -12,11 +12,19 @@ import org.apache.commons.io.IOUtils;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.Time;
+import jakarta.servlet.annotation.MultipartConfig;
 
-@WebServlet(name = "TechlogController", urlPatterns = {"/", "/editTechlog", "/submitTechlog", "/updateTechlog"})
+@MultipartConfig
+@WebServlet(name = "TechlogController", urlPatterns = {"/", "/editTechlog", "/submitTechlog", "/updateTechlog", "/deleteTechlog"})
 public class TechlogController extends HttpServlet {
 
     private EntityManagerFactory entityManagerFactory;
+    private String getStringFromPart(Part part) throws IOException {
+        if (part == null) {
+            return null;
+        }
+        return IOUtils.toString(part.getInputStream(), StandardCharsets.UTF_8);
+    }
 
     @Override
     public void init() throws ServletException {
@@ -43,22 +51,25 @@ public class TechlogController extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String path = request.getServletPath();
         if ("/updateTechlog".equals(path)) {
-            int id = Integer.parseInt(request.getParameter("id"));
+            Part idPart = request.getPart("id");
+            String idString = IOUtils.toString(idPart.getInputStream(), StandardCharsets.UTF_8);
+            int id = Integer.parseInt(idString);
 
             EntityManager entityManager = entityManagerFactory.createEntityManager();
             EntityTransaction transaction = entityManager.getTransaction();
             TechlogEntity techLog = entityManager.find(TechlogEntity.class, id);
 
             if (techLog != null) {
-                techLog.setTechNum(Integer.parseInt(request.getParameter("techNum")));
-                techLog.setLane(request.getParameter("lane"));
-                techLog.setReportTime(Time.valueOf(request.getParameter("reportTime") + ":00"));
-                techLog.setStartTime(Time.valueOf(request.getParameter("startTime") + ":00"));
-                techLog.setStopTime(Time.valueOf(request.getParameter("stopTime") + ":00"));
-                techLog.setReportedProb(request.getParameter("reportedProb"));
-                techLog.setActualProb(request.getParameter("actualProb"));
-                techLog.setActionTaken(request.getParameter("actionTaken"));
-                techLog.setSkidata("1".equals(request.getParameter("skidata")));
+                techLog.setTechNum(Integer.parseInt(getStringFromPart(request.getPart("techNum"))));
+                techLog.setLane(getStringFromPart(request.getPart("lane")));
+                techLog.setReportTime(Time.valueOf(getStringFromPart(request.getPart("reportTime")) + ":00"));
+                techLog.setStartTime(Time.valueOf(getStringFromPart(request.getPart("startTime")) + ":00"));
+                techLog.setStopTime(Time.valueOf(getStringFromPart(request.getPart("stopTime")) + ":00"));
+                techLog.setReportedProb(getStringFromPart(request.getPart("reportedProb")));
+                techLog.setActualProb(getStringFromPart(request.getPart("actualProb")));
+                techLog.setActionTaken(getStringFromPart(request.getPart("actionTaken")));
+                techLog.setSkidata("1".equals(getStringFromPart(request.getPart("skidata"))));
+
 
                 try {
                     transaction.begin();
@@ -78,16 +89,20 @@ public class TechlogController extends HttpServlet {
             return;
         }
 
-
         if ("/deleteTechlog".equals(path)) {
             //int id = Integer.parseInt(request.getParameter("id"));
-          Part idPart = request.getPart("id");
-            String idString = IOUtils.toString(idPart.getInputStream(), StandardCharsets.UTF_8);
-            int id = Integer.parseInt(idString);
+            String idStr = request.getParameter("id");
+            int id = 0;
+            try {
+                id = Integer.parseInt(idStr);
+            } catch (NumberFormatException e) {
+                // Handle the case when the input string is empty or not a valid integer
+                // For example, you can log an error message or set a default value for the id
+                System.err.println("Invalid or empty 'id' parameter: " + idStr);
+            }
 
             EntityManager entityManager = entityManagerFactory.createEntityManager();
             EntityTransaction transaction = entityManager.getTransaction();
-
             try {
                 transaction.begin();
 
@@ -95,11 +110,8 @@ public class TechlogController extends HttpServlet {
                 if (techLog != null) {
                     entityManager.remove(techLog);
                 }
-
                 transaction.commit();
                 response.setStatus(HttpServletResponse.SC_OK);
-                response.sendRedirect("index.jsp");
-
             } catch (Exception e) {
                 transaction.rollback();
                 e.printStackTrace();
@@ -107,20 +119,19 @@ public class TechlogController extends HttpServlet {
             } finally {
                 entityManager.close();
             }
-
             return;
         }
 
+        int techNum = Integer.parseInt(getStringFromPart(request.getPart("techNum")));
+        String lane = getStringFromPart(request.getPart("lane"));
+        Time reportTime = Time.valueOf(getStringFromPart(request.getPart("reportTime")) + ":00");
+        Time startTime = Time.valueOf(getStringFromPart(request.getPart("startTime")) + ":00");
+        Time stopTime = Time.valueOf(getStringFromPart(request.getPart("stopTime")) + ":00");
+        String reportedProb = getStringFromPart(request.getPart("reportedProb"));
+        String actualProb = getStringFromPart(request.getPart("actualProb"));
+        String actionTaken = getStringFromPart(request.getPart("actionTaken"));
+        boolean skidata = "1".equals(getStringFromPart(request.getPart("skidata")));
 
-        int techNum = Integer.parseInt(request.getParameter("techNum"));
-        String lane = request.getParameter("lane");
-        Time reportTime = Time.valueOf(request.getParameter("reportTime") + ":00");
-        Time startTime = Time.valueOf(request.getParameter("startTime") + ":00");
-        Time stopTime = Time.valueOf(request.getParameter("stopTime") + ":00");
-        String reportedProb = request.getParameter("reportedProb");
-        String actualProb = request.getParameter("actualProb");
-        String actionTaken = request.getParameter("actionTaken");
-        boolean skidata = "1".equals(request.getParameter("skidata"));
         EntityManager entityManager = entityManagerFactory.createEntityManager();
         EntityTransaction transaction = entityManager.getTransaction();
 
@@ -159,7 +170,7 @@ public class TechlogController extends HttpServlet {
             entityManager.close();
         }
 
-        response.sendRedirect("index.jsp");
+        response.sendRedirect("/");
     }
 
     @Override
