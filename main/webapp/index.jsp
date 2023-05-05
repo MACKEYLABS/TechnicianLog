@@ -2,6 +2,7 @@
 <%@ page import="java.util.List" %>
 <%@ page import="entity.TechlogEntity" %>
 <%@ page import="jakarta.persistence.*" %>
+<%@ page import="java.text.SimpleDateFormat" %>
 <!DOCTYPE html>
 <html>
 <head>
@@ -16,54 +17,7 @@
         th {
             background-color: lightgrey;
         }
-        .form-container {
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        .form-container label {
-            margin-right: 5px;
-        }
-        input[type="number"]#techNum {
-            width: 12ch;
-        }
-        input[type="text"].small {
-            width: 150px;
-        }
-        input[type="text"].medium {
-            width: 250px;
-        }
     </style>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const deleteButtons = document.querySelectorAll(".delete-btn");
-            deleteButtons.forEach((btn) => {
-                btn.addEventListener("click", async function() {
-                    const id = btn.getAttribute("data-id");
-                    const formData = new FormData();
-                    formData.append('id', id);
-                    const response = await fetch("/deleteTechlog", {
-
-                        method: "POST",
-                        body: formData
-                    });
-
-
-                    const result = await response.text();
-                    if (result === "success") {
-                        btn.closest("tr").remove();
-                    } else {
-                        alert("An error occurred. Please try again.");
-                    }
-                });
-            });
-        });
-    </script>
-
-
 </head>
 <body>
 <h1>GOAA Revenue Technician Tech Log</h1>
@@ -82,18 +36,18 @@
         <th>Edit</th>
         <th>Delete</th>
     </tr>
-        <% EntityManagerFactory emf = Persistence.createEntityManagerFactory("default");
+    <% EntityManagerFactory emf = Persistence.createEntityManagerFactory("default");
         EntityManager em = emf.createEntityManager();
         TypedQuery<TechlogEntity> query = em.createQuery("SELECT t FROM TechlogEntity t", TechlogEntity.class);
         List<TechlogEntity> techlogs = query.getResultList();
         for (TechlogEntity techlog : techlogs) { %>
     <tr>
-        <td><%= techlog.getId() %></td>
+        <td class="editable"><%= techlog.getId() %></td>
         <td class="editable"><%= techlog.getTechNum() %></td>
         <td class="editable"><%= techlog.getLane() %></td>
-        <td class="editable"><%= techlog.getReportTime() %></td>
-        <td class="editable"><%= techlog.getStartTime() %></td>
-        <td class="editable"><%= techlog.getStopTime() %></td>
+        <td class="editable"><%= new SimpleDateFormat("HH:mm:ss").format(techlog.getReportTime()) %></td>
+        <td class="editable"><%= new SimpleDateFormat("HH:mm:ss").format(techlog.getStartTime()) %></td>
+        <td class="editable"><%= new SimpleDateFormat("HH:mm:ss").format(techlog.getStopTime()) %></td>
         <td class="editable"><%= techlog.getReportedProb() %></td>
         <td class="editable"><%= techlog.getActualProb() %></td>
         <td class="editable"><%= techlog.getActionTaken() %></td>
@@ -102,11 +56,13 @@
             <button class="edit-btn" type="button">Edit</button>
         </td>
         <td>
-            <button class="delete-btn" type="button" data-id="<%= techlog.getId() %>">Delete</button>
-
+            <form method="POST" action="<%=request.getContextPath()%>/deleteTechlog">
+                <input type="hidden" name="id" value="<%= techlog.getId() %>"/>
+                <input type="submit" value="Delete"/>
+            </form>
         </td>
     </tr>
-        <% }
+    <% }
         em.close();
         emf.close(); %>
     <tr>
@@ -117,73 +73,81 @@
             <td><input type="time" id="reportTime" name="reportTime" required></td>
             <td><input type="time" id="startTime" name="startTime" required></td>
             <td><input type="time" id="stopTime" name="stopTime" required></td>
-            <td><input type="text" id="reportedProb" name="reportedProb" class="small" required></td>
-            <td><input type="text" id="actualProb" name="actualProb" class="small" required></td>
-            <td><input type="text" id="actionTaken" name="actionTaken" class="medium" required></td>
-            <td><input type="checkbox" id="skidata" name="skidata"></td>
-            <td><input type="submit" value="Submit"></td>
-            <td></td>
+            <td><input type="text" id="reportedProb" name="reportedProb" required></td>
+            <td><input type="text" id="actualProb" name="actualProb" required></td>
+            <td><input type="text" id="actionTaken" name="actionTaken" required></td>
+            <td>
+                <input type="radio" id="skidataYes" name="skidata" value="true" required>
+                <label for="skidataYes">Yes</label>
+                <input type="radio" id="skidataNo" name="skidata" value="false" required>
+                <label for="skidataNo">No</label>
+            </td>
+            <td colspan="2">
+                <input type="submit" value="Submit">
+            </td>
         </form>
     </tr>
+
 </table>
 <script>
-    document.querySelectorAll('.edit-btn').forEach((btn, index) => {
-        btn.addEventListener('click', () => {
-            const row = btn.closest('tr');
-            row.querySelectorAll('.editable').forEach(cell => {
-                const input = document.createElement('input');
-                input.value = cell.innerText;
-                cell.innerText = '';
-                cell.appendChild(input);
-            });
-            btn.innerText = 'Save';
-            btn.removeEventListener('click', arguments.callee);
-            btn.addEventListener('click', () => {
-                row.querySelectorAll('.editable').forEach(cell => {
-                    const input = cell.querySelector('input');
-                    cell.innerText = input.value;
-                });
-                btn.innerText = 'Edit';
-                btn.removeEventListener('click', arguments.callee);
-                btn.addEventListener('click', arguments.callee.caller);
-            });
-            btn.addEventListener('click', () => {
-                const id = row.querySelector('.delete-btn').getAttribute('data-id');
-                const data = new FormData();
-                data.append('id', id);
-
-                row.querySelectorAll('.editable').forEach((cell, i) => {
-                    const input = cell.querySelector('input');
-                    const paramName = input.getAttribute('name');
-                    data.append(paramName, input.value);
-                });
-
-                fetch('updateTechlog', {
-                    method: 'POST',
-                    body: data
-                }).then(response => {
-                    if (response.ok) {
-                        row.querySelectorAll('.editable').forEach(cell => {
-                            const input = cell.querySelector('input');
-                            cell.innerText = input.value;
-                        });
-                        btn.innerText = 'Edit';
-                        btn.removeEventListener('click', arguments.callee);
-                        btn.addEventListener('click', arguments.callee.caller);
+    document.querySelectorAll('.edit-btn').forEach(function (button) {
+        button.addEventListener('click', function (event) {
+            let row = event.target.parentElement.parentElement;
+            let fields = row.querySelectorAll('.editable');
+            let isEditing = row.classList.contains('editing');
+            if (isEditing) {
+                let id = row.querySelector('input[name="id"]').value;
+                let data = Array.from(fields).map(function (field) {
+                    let input = field.querySelector('input');
+                    if (input) {
+                        return input.value;
                     } else {
-                        alert('An error occurred. Please try again.');
+                        return field.textContent;
                     }
-                }).catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred. Please try again.');
                 });
-            });
+                let xhr = new XMLHttpRequest();
+                xhr.open("POST", "<%=request.getContextPath()%>/updateTechlog", true);
+                xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        fields.forEach(function (field) {
+                            let input = field.querySelector('input');
+                            field.textContent = input.value;
+                            field.removeChild(input);
+                        });
+                        row.classList.remove('editing');
+                        event.target.textContent = 'Edit';
+                    }
+                };
+                let jsonData = {
+                    id: id,
+                    data: [
+                        parseInt(data[1]), // Technician Number
+                        data[2], // Lane Number
+                        data[3], // Time Reported
+                        data[4], // Start Time
+                        data[5], // Stop Time
+                        data[6], // Problem Reported
+                        data[7], // Actual Problem
+                        data[8], // Action Taken
+                        data[9] === 'true' // Skidata Contacted
+                    ]
+                };
 
+                xhr.send(JSON.stringify(jsonData));
+            } else {
+                fields.forEach(function (field) {
+                    let value = field.textContent;
+                    field.textContent = '';
+                    let input = document.createElement('input');
+                    input.value = value;
+                    field.appendChild(input);
+                });
+                row.classList.add('editing');
+                event.target.textContent = 'Save';
+            }
         });
     });
 </script>
 </body>
 </html>
-
-
-

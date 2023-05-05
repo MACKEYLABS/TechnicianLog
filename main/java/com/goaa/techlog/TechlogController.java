@@ -1,5 +1,7 @@
 package com.goaa.techlog;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import entity.TechlogEntity;
 import jakarta.persistence.*;
 import jakarta.servlet.ServletException;
@@ -7,13 +9,11 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.Part;
-import org.apache.commons.io.IOUtils;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.sql.Time;
+import com.google.gson.Gson;
 
-@WebServlet(name = "TechlogController", urlPatterns = {"/", "/editTechlog", "/submitTechlog", "/updateTechlog"})
+@WebServlet(name = "TechlogController", urlPatterns = {"/", "/submitTechlog", "/updateTechlog", "/deleteTechlog"})
 public class TechlogController extends HttpServlet {
 
     private EntityManagerFactory entityManagerFactory;
@@ -24,47 +24,36 @@ public class TechlogController extends HttpServlet {
     }
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        String path = request.getServletPath();
-
-        if ("/editTechlog".equals(path)) {
-            int id = Integer.parseInt(request.getParameter("id"));
-
-            EntityManager entityManager = entityManagerFactory.createEntityManager();
-            TechlogEntity techLog = entityManager.find(TechlogEntity.class, id);
-            entityManager.close();
-
-            request.setAttribute("techLog", techLog);
-            request.getRequestDispatcher("editTechlog.jsp").forward(request, response);
-        }
-    }
-
-    @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String path = request.getServletPath();
         if ("/updateTechlog".equals(path)) {
-            int id = Integer.parseInt(request.getParameter("id"));
+            Gson gson = new Gson();
+            JsonObject jsonObject = gson.fromJson(request.getReader(), JsonObject.class);
+            int id = jsonObject.get("id").getAsInt();
+            JsonArray data = jsonObject.get("data").getAsJsonArray();
+
 
             EntityManager entityManager = entityManagerFactory.createEntityManager();
             EntityTransaction transaction = entityManager.getTransaction();
             TechlogEntity techLog = entityManager.find(TechlogEntity.class, id);
 
             if (techLog != null) {
-                techLog.setTechNum(Integer.parseInt(request.getParameter("techNum")));
-                techLog.setLane(request.getParameter("lane"));
-                techLog.setReportTime(Time.valueOf(request.getParameter("reportTime") + ":00"));
-                techLog.setStartTime(Time.valueOf(request.getParameter("startTime") + ":00"));
-                techLog.setStopTime(Time.valueOf(request.getParameter("stopTime") + ":00"));
-                techLog.setReportedProb(request.getParameter("reportedProb"));
-                techLog.setActualProb(request.getParameter("actualProb"));
-                techLog.setActionTaken(request.getParameter("actionTaken"));
-                techLog.setSkidata("1".equals(request.getParameter("skidata")));
+                techLog.setTechNum(data.get(0).getAsInt());
+                techLog.setLane(data.get(1).getAsString());
+                techLog.setReportTime(Time.valueOf(data.get(2).getAsString()));
+                techLog.setStartTime(Time.valueOf(data.get(3).getAsString()));
+                techLog.setStopTime(Time.valueOf(data.get(4).getAsString()));
+                techLog.setReportedProb(data.get(5).getAsString());
+                techLog.setActualProb(data.get(6).getAsString());
+                techLog.setActionTaken(data.get(7).getAsString());
+                techLog.setSkidata(data.get(8).getAsBoolean());
 
                 try {
                     transaction.begin();
                     entityManager.merge(techLog);
                     transaction.commit();
-                    response.setStatus(HttpServletResponse.SC_OK);
+                    response.sendRedirect("index.jsp");
+
                 } catch (Exception e) {
                     transaction.rollback();
                     e.printStackTrace();
@@ -78,12 +67,8 @@ public class TechlogController extends HttpServlet {
             return;
         }
 
-
         if ("/deleteTechlog".equals(path)) {
-            //int id = Integer.parseInt(request.getParameter("id"));
-          Part idPart = request.getPart("id");
-            String idString = IOUtils.toString(idPart.getInputStream(), StandardCharsets.UTF_8);
-            int id = Integer.parseInt(idString);
+            int id = Integer.parseInt(request.getParameter("id"));
 
             EntityManager entityManager = entityManagerFactory.createEntityManager();
             EntityTransaction transaction = entityManager.getTransaction();
@@ -97,7 +82,6 @@ public class TechlogController extends HttpServlet {
                 }
 
                 transaction.commit();
-                response.setStatus(HttpServletResponse.SC_OK);
                 response.sendRedirect("index.jsp");
 
             } catch (Exception e) {
@@ -107,10 +91,8 @@ public class TechlogController extends HttpServlet {
             } finally {
                 entityManager.close();
             }
-
             return;
         }
-
 
         int techNum = Integer.parseInt(request.getParameter("techNum"));
         String lane = request.getParameter("lane");
@@ -130,9 +112,6 @@ public class TechlogController extends HttpServlet {
             TechlogEntity techLog = null;
             if ("/submitTechlog".equals(path)) {
                 techLog = new TechlogEntity();
-            } else if ("/editTechlog".equals(path)) {
-                int id = Integer.parseInt(request.getParameter("id"));
-                techLog = entityManager.find(TechlogEntity.class, id);
             }
 
             if (techLog != null) {
