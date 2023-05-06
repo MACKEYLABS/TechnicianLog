@@ -32,7 +32,6 @@ public class TechlogController extends HttpServlet {
             int id = jsonObject.get("id").getAsInt();
             JsonArray data = jsonObject.get("data").getAsJsonArray();
 
-
             EntityManager entityManager = entityManagerFactory.createEntityManager();
             EntityTransaction transaction = entityManager.getTransaction();
             TechlogEntity techLog = entityManager.find(TechlogEntity.class, id);

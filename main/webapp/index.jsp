@@ -3,9 +3,15 @@
 <%@ page import="entity.TechlogEntity" %>
 <%@ page import="jakarta.persistence.*" %>
 <%@ page import="java.text.SimpleDateFormat" %>
+<%@ page import="java.util.Date" %>
 <!DOCTYPE html>
 <html>
 <head>
+    <%
+        Date currentDate = new Date();
+        SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy");
+        String formattedDate = sdf.format(currentDate);
+    %>
     <title>Tech Log</title>
     <style>
         table, th, td {
@@ -18,12 +24,20 @@
             background-color: lightgrey;
         }
     </style>
-</head>
+    <head>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.0/jspdf.umd.min.js" onload="initialize()" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js" defer></script>
+        <script>
+            let jsPDF;
+            function initialize() {
+                jsPDF = window.jspdf.jsPDF;
+            }
+        </script>
+    </head>
 <body>
-<h1>GOAA Revenue Technician Tech Log</h1>
+<h1>GOAA Revenue Technician Tech Log - Date: <%= formattedDate %></h1></h1>
 <table>
     <tr>
-        <th>ID</th>
         <th>Technician Number</th>
         <th>Lane Number</th>
         <th>Time Reported</th>
@@ -42,7 +56,6 @@
         List<TechlogEntity> techlogs = query.getResultList();
         for (TechlogEntity techlog : techlogs) { %>
     <tr>
-        <td class="editable"><%= techlog.getId() %></td>
         <td class="editable"><%= techlog.getTechNum() %></td>
         <td class="editable"><%= techlog.getLane() %></td>
         <td class="editable"><%= new SimpleDateFormat("HH:mm:ss").format(techlog.getReportTime()) %></td>
@@ -67,7 +80,6 @@
         emf.close(); %>
     <tr>
         <form action="submitTechlog" method="post">
-            <td></td>
             <td><input type="number" id="techNum" name="techNum" required></td>
             <td><input type="number" id="lane" name="lane" required></td>
             <td><input type="time" id="reportTime" name="reportTime" required></td>
@@ -77,18 +89,19 @@
             <td><input type="text" id="actualProb" name="actualProb" required></td>
             <td><input type="text" id="actionTaken" name="actionTaken" required></td>
             <td>
-                <input type="radio" id="skidataYes" name="skidata" value="true" required>
-                <label for="skidataYes">Yes</label>
-                <input type="radio" id="skidataNo" name="skidata" value="false" required>
-                <label for="skidataNo">No</label>
+                <select id="skidata" name="skidata" required>
+                    <option value="">Select</option>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                </select>
             </td>
             <td colspan="2">
-                <input type="submit" value="Submit">
+                <input type="submit" value="Add"/>
             </td>
         </form>
     </tr>
-
 </table>
+<button id="saveAsPDF" type="button">Save as PDF</button>
 <script>
     document.querySelectorAll('.edit-btn').forEach(function (button) {
         button.addEventListener('click', function (event) {
@@ -110,31 +123,34 @@
                 xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
                 xhr.onreadystatechange = function () {
                     if (xhr.readyState === 4 && xhr.status === 200) {
-                        fields.forEach(function (field) {
-                            let input = field.querySelector('input');
-                            field.textContent = input.value;
-                            field.removeChild(input);
-                        });
-                        row.classList.remove('editing');
-                        event.target.textContent = 'Edit';
+                        location.reload(); // Add this line to reload the page
                     }
                 };
                 let jsonData = {
                     id: id,
                     data: [
-                        parseInt(data[1]), // Technician Number
-                        data[2], // Lane Number
-                        data[3], // Time Reported
-                        data[4], // Start Time
-                        data[5], // Stop Time
-                        data[6], // Problem Reported
-                        data[7], // Actual Problem
-                        data[8], // Action Taken
-                        data[9] === 'true' // Skidata Contacted
+                        data[0], // Technician Number
+                        data[1], // Lane Number
+                        data[2], // Time Reported
+                        data[3], // Start Time
+                        data[4], // Stop Time
+                        data[5], // Problem Reported
+                        data[6], // Actual Problem
+                        data[7], // Action Taken
+                        data[8] === 'true' // Skidata Contacted
                     ]
                 };
 
                 xhr.send(JSON.stringify(jsonData));
+
+                // Remove input elements and update text content of the fields
+                fields.forEach(function (field) {
+                    let input = field.querySelector('input');
+                    field.textContent = input.value;
+                    field.removeChild(input);
+                });
+                row.classList.remove('editing');
+                event.target.textContent = 'Edit';
             } else {
                 fields.forEach(function (field) {
                     let value = field.textContent;
@@ -148,6 +164,30 @@
             }
         });
     });
+    window.onload = function() {
+    document.getElementById('saveAsPDF').addEventListener('click', function () {
+        const table = document.querySelector('table');
+        const headers = Array.from(table.querySelectorAll('th')).map(th => th.innerText);
+        const rows = Array.from(table.querySelectorAll('tr:not(:first-child)')).map(tr => Array.from(tr.querySelectorAll('td:not(:last-child):not(:nth-last-child(2))')).map(td => td.innerText));
+
+        const doc = new jsPDF('l', 'pt', 'letter');
+
+
+        doc.setFontSize(18);
+        doc.text('GOAA Revenue Technician Tech Log - Date: ' + '<%= formattedDate %>', 15, 15);
+        doc.autoTable({
+            head: [headers.slice(0, -2)],
+            body: rows,
+            startY: 30,
+            styles: {
+                fontSize: 11
+            }
+        });
+
+        const fileName = 'Tech_Log_' + '<%= formattedDate %>' + '.pdf';
+        doc.save(fileName);
+    });
+    };
 </script>
 </body>
 </html>
